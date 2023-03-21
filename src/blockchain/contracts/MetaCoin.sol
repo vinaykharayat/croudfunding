@@ -6,6 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MetaCoin is ERC20, Ownable {
     constructor() ERC20("MetaCoin", "MTC") {
-        _mint(msg.sender, 10000 * 10**decimals());
+        _mint(msg.sender, 1000000 * 10 ** decimals());
     }
 }

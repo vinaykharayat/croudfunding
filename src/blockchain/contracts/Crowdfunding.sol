@@ -16,7 +16,7 @@ contract Crowdfunding {
 
     MetaCoin public metaCoin;
     mapping(uint256 => Project) public projects;
-    uint256 public numProjects;
+    uint256 public numProjects = 0;
 
     mapping(uint256 => mapping(address => uint256)) public contributions;
 
@@ -33,13 +33,12 @@ contract Crowdfunding {
     }
 
     function createProject(
-        uint256 _id,
         uint256 _deadline,
         string memory _title,
         uint256 _goal
     ) public {
-        projects[_id] = Project(
-            _id,
+        projects[numProjects] = Project(
+            numProjects,
             msg.sender,
             _deadline,
             _title,
@@ -47,12 +46,12 @@ contract Crowdfunding {
             0,
             false
         );
+        emit ProjectCreated(numProjects, msg.sender, _deadline, _title, _goal);
         numProjects++;
     }
 
     function contribute(uint256 _projectId, uint256 _amount) public {
         require(_projectId < numProjects, "Invalid project ID");
-
         Project storage project = projects[_projectId];
         require(!project.completed, "Project is already completed");
         require(
@@ -60,9 +59,9 @@ contract Crowdfunding {
             "Project deadline has passed"
         );
 
-        metaCoin.transferFrom(msg.sender, address(this), _amount);
         contributions[_projectId][msg.sender] += _amount;
         project.balance += _amount;
+        metaCoin.transferFrom(msg.sender, address(this), _amount);
     }
 
     function withdraw(uint256 _projectId, uint256 _amount) public {
@@ -91,9 +90,14 @@ contract Crowdfunding {
             );
         }
 
-        metaCoin.transfer(msg.sender, _amount);
+        require(
+            project.completed && (project.balance < project.goal),
+            "Cannot withdraw because goal completed"
+        );
+
         contributions[_projectId][msg.sender] -= _amount;
         project.balance -= _amount;
+        metaCoin.transfer(msg.sender, _amount);
     }
 
     function completeProject(uint256 _projectId) public {
@@ -105,14 +109,17 @@ contract Crowdfunding {
             "Only project owner can complete the project"
         );
         require(!project.completed, "Project is already completed");
+
         require(
-            project.deadline < block.timestamp,
+            project.deadline > block.timestamp,
             "Project deadline has not passed yet"
         );
 
         project.completed = true;
         uint256 balance = project.balance;
-        metaCoin.transfer(project.owner, balance);
+        if (project.balance >= project.goal) {
+            metaCoin.transfer(project.owner, balance);
+        }
     }
 
     function getBalance(uint256 _projectId) public view returns (uint256) {
@@ -122,11 +129,10 @@ contract Crowdfunding {
         return project.balance;
     }
 
-    function getContribution(uint256 _projectId, address _contributor)
-        public
-        view
-        returns (uint256)
-    {
+    function getContribution(
+        uint256 _projectId,
+        address _contributor
+    ) public view returns (uint256) {
         require(_projectId < numProjects, "Invalid project ID");
 
         return contributions[_projectId][_contributor];

@@ -33,7 +33,7 @@ const Crowdfunding = () => {
         );
 
         const metaCoin = new web3.eth.Contract(
-          MetaCoinContract.abi,
+          MetaCoinContract,
           "0xa2768A0B59708Eb00D14f29B63791f6c5960Bdf1"
         );
 
